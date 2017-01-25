@@ -52,7 +52,7 @@ Native frameworks in contrast, are shipped and maintained by the OS and often ti
 
 A final motivation in using native libraries is that vendors often go through security certification processes for their own modules and therefore users can get this certification for free. In particular, many use cases that involve government or enterprise data or users, require FIPS 104 compliance or validation. FIPS is a US Government (NIST) cryptographic standard and is a requirement by most government agencies and many enterprises. The process of getting certified  is hard, expensive and time consuming and is only done by vendors and large organizations. 
 
-On Linux, OpenSSL contains the OpenSSL FIPS Object Module, which is FIPS 140-2 conformance validated (not just compliant). However since OpenSSL was depracated on macOS, Apple no longer submits OpenSSL on macOS for FIPS 104 validation and therefore OpenSSL on macOS is no longer FIPS compliant. Apple submits its own CoreCrypto and CoreCrypto Kernel for validation.
+On Linux, OpenSSL contains the OpenSSL FIPS Object Module, which is FIPS 140-2 conformance validated (not just compliant). However since OpenSSL was deprecated on macOS, Apple no longer submits OpenSSL on macOS for FIPS 104 validation and therefore OpenSSL on macOS is no longer FIPS compliant. Apple submits its own CoreCrypto and CoreCrypto Kernel for validation.
 
 
 ## Other Security Libraries on Linux
