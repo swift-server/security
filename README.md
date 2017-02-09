@@ -23,6 +23,7 @@ We propose the following set of design goals for the Swift security component:
 - Native libraries should be dynamically linked to, in order to allow timely security patching; 
 - Avoid re-implementing security functionality, using existing functions in underlying libraries where it is available;
 - Provide a consistent and unified Swift interface across operating systems, so that the developer can write simple, cross-platform applications;
+- Abstract away the communication protocol, interacting primarily with data streams.
 
 Using these goals, we would use the following native libraries on each platform:
  - On Linux, we would use OpenSSL which is not only the most prevalent open source security library but it is also FIPS 104 conformance verified. OpenSSL is made up of two primary (sub)libraries: libssl and libcrypto. libcrypto is a comprehensive and full-featured cryptographic library that provides the fundamental cryptographic routines used by libssl, which implements the SSL and TLS protocols.
