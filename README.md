@@ -26,7 +26,7 @@ We propose the following set of design goals for the Swift security component:
 - Abstract away the communication protocol, interacting primarily with data streams.
 
 Using these goals, we would use the following native libraries on each platform:
- - On Linux, we would use OpenSSL which is not only the most prevalent open source security library but it is also FIPS 104 conformance verified. OpenSSL is made up of two primary (sub)libraries: libssl and libcrypto. libcrypto is a comprehensive and full-featured cryptographic library that provides the fundamental cryptographic routines used by libssl, which implements the SSL and TLS protocols.
+ - On Linux, we would use OpenSSL which is not only the most prevalent open source security library but it is also FIPS 140 conformance verified. OpenSSL is made up of two primary (sub)libraries: libssl and libcrypto. libcrypto is a comprehensive and full-featured cryptographic library that provides the fundamental cryptographic routines used by libssl, which implements the SSL and TLS protocols.
  - On Apple, we would use CommonCrypto and Secure Transport which respectively map to OpenSSL's libcrypto and libssl.
 
 The proposed solution then would consist of a thin Swift layer that defines a common API surface which are implemented using OpenSSL on Linux and CommonCrypto and Secure Transport on Apple.
@@ -51,9 +51,9 @@ This problem is further exacerbated when we consider the lack of API compatibili
 
 Native frameworks in contrast, are shipped and maintained by the OS and often tie API changes to OS versions which greatly improves maintainability of linked application. 
 
-A final motivation in using native libraries is that vendors often go through security certification processes for their own modules and therefore users can get this certification for free. In particular, many use cases that involve government or enterprise data or users, require FIPS 104 compliance or validation. FIPS is a US Government (NIST) cryptographic standard and is a requirement by most government agencies and many enterprises. The process of getting certified  is hard, expensive and time consuming and is only done by vendors and large organizations. 
+A final motivation in using native libraries is that vendors often go through security certification processes for their own modules and therefore users can get this certification for free. In particular, many use cases that involve government or enterprise data or users, require FIPS 140 compliance or validation. FIPS is a US Government (NIST) cryptographic standard and is a requirement by most government agencies and many enterprises. The process of getting certified  is hard, expensive and time consuming and is only done by vendors and large organizations. 
 
-On Linux, OpenSSL contains the OpenSSL FIPS Object Module, which is FIPS 140-2 conformance validated (not just compliant). However since OpenSSL was deprecated on macOS, Apple no longer submits OpenSSL on macOS for FIPS 104 validation and therefore OpenSSL on macOS is no longer FIPS compliant. Apple submits its own CoreCrypto and CoreCrypto Kernel for validation.
+On Linux, OpenSSL contains the OpenSSL FIPS Object Module, which is FIPS 140-2 conformance validated (not just compliant). However since OpenSSL was deprecated on macOS, Apple no longer submits OpenSSL on macOS for FIPS 140 validation and therefore OpenSSL on macOS is no longer FIPS compliant. Apple submits its own CoreCrypto and CoreCrypto Kernel for validation.
 
 
 ## Other Security Libraries on Linux
