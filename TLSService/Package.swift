@@ -5,7 +5,8 @@ import PackageDescription
 let package = Package(
     name: "TLSService",
     targets:  [Target(name: "TLSService")],
-    dependencies: [])
+    dependencies: [],
+    exclude: ["Protocols"])
 
 #if os(Linux)
 // module map for OpenSSL libSSL and libcrypto
