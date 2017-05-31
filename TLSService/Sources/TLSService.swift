@@ -1037,26 +1037,32 @@ public class TLSService: TLSServiceDelegate {
     ///
     private func prepareConnection(socket: ConnectionDelegate) throws -> UnsafeMutablePointer<SSL> {
     
-    // Make sure our context is valid...
-    guard let context = self.context else {
+        // Make sure our context is valid...
+        guard let context = self.context else {
+        
+        let reason = "ERROR: Unable to access TLS context."
+        throw TLSError.fail(Int(EFAULT), reason)
+        }
+        
+        // Now create the connection...
+        self.cTLS = SSL_new(context)
+        
+        guard let TLSConnect = self.cTLS else {
+        
+        let reason = "ERROR: Unable to create TLS connection."
+        throw TLSError.fail(Int(EFAULT), reason)
+        }
+        
+        // Set the socket file descriptor...
+        switch socket.endpoint {
+            case .socket(let fd):
+                SSL_set_fd(TLSConnect, fd)
+            default:
+                let reason = "ERROR: This is a socket implementation."
+                throw TLSError.fail(Int(EPERM), reason)
+        }
     
-    let reason = "ERROR: Unable to access TLS context."
-    throw TLSError.fail(Int(EFAULT), reason)
-    }
-    
-    // Now create the connection...
-    self.cTLS = SSL_new(context)
-    
-    guard let TLSConnect = self.cTLS else {
-    
-    let reason = "ERROR: Unable to create TLS connection."
-    throw TLSError.fail(Int(EFAULT), reason)
-    }
-    
-    // Set the socket file descriptor...
-    SSL_set_fd(TLSConnect, socket.socketfd)
-    
-    return TLSConnect
+        return TLSConnect
     }
     
     #else
@@ -1134,7 +1140,7 @@ public class TLSService: TLSServiceDelegate {
                 guard let TLSConnect = self.cTLS else {
                     
                     let reason = "ERROR: verifyConnection, code: \(ECONNABORTED), reason: Unable to reference connection)"
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
                 if SSL_get_peer_certificate(TLSConnect) != nil {

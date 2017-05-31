@@ -66,7 +66,7 @@ public protocol TLSServiceDelegate {
     
 }
 
-// MARK: SSLError
+// MARK: TLSError
 
 ///
 /// TLS Service Error
