@@ -6,30 +6,7 @@
 // See http://swift.org/LICENSE.txt for license information
 //
 
-
-//
-//  SSLService.swift
-//  SSLService
-//
-//  Created by Bill Abt on 5/26/16.
-//
-//  Copyright © 2016 IBM. All rights reserved.
-//
-// 	Licensed under the Apache License, Version 2.0 (the "License");
-// 	you may not use this file except in compliance with the License.
-// 	You may obtain a copy of the License at
-//
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// 	Unless required by applicable law or agreed to in writing, software
-// 	distributed under the License is distributed on an "AS IS" BASIS,
-// 	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// 	See the License for the specific language governing permissions and
-// 	limitations under the License.
-//
-
 import Foundation
-import CKit
 
 #if os(Linux)
     import OpenSSL
@@ -37,12 +14,12 @@ import CKit
 
 import Dispatch
 
-// MARK: SSLService
+// MARK: TLSService
 
 ///
-/// **SSLService:** SSL Service Plugin for Socket using **Apple Secure Transport** on `macOS` and **OpenSSL** on `Linux`.
+/// **TLSService:** TLS Service Plugin for Socket using **Apple Secure Transport** on `macOS` and **OpenSSL** on `Linux`.
 ///
-public class SSLService: TLSServiceDelegate {
+public class TLSService: TLSServiceDelegate {
     
     // MARK: Statics
     
@@ -93,9 +70,9 @@ public class SSLService: TLSServiceDelegate {
     // MARK: Helpers
     
     ///
-    /// Used to dispatch reads and writes to protect the SSLContext
+    /// Used to dispatch reads and writes to protect the TLSContext
     ///
-    public struct SSLReadWriteDispatcher {
+    public struct TLSReadWriteDispatcher {
         
         /// Internal semaphore
         let s = DispatchSemaphore(value: 1)
@@ -123,7 +100,7 @@ public class SSLService: TLSServiceDelegate {
     // MARK: Configuration
     
     ///
-    /// SSL Configuration
+    /// TLS Configuration
     ///
     public struct Configuration {
         
@@ -296,38 +273,38 @@ public class SSLService: TLSServiceDelegate {
     // MARK: --- Settable
     
     ///
-    /// Verification Callback. Called by the internal `verifyConnection()` function to do any *additional* connection verification.  This property is set after initializing the `SSLService`.
+    /// Verification Callback. Called by the internal `verifyConnection()` function to do any *additional* connection verification.  This property is set after initializing the `TLSService`.
     ///
     /// - Parameters service:	This service module
     ///
     /// - Returns:	Tuple containing a `Bool` to indicate success or failure of the verification and a `String?` containing text describing the error if desired.
     ///
-    public var verifyCallback: ((_ service: SSLService) -> (Bool, String?))? = nil
+    public var verifyCallback: ((_ service: TLSService) -> (Bool, String?))? = nil
     
-    /// If true, skips the internal verification.  However, if the `verifyCallback` property is set, the callback will be called regardless of this setting. Default is false. This property is set after initializing the `SSLService`.
+    /// If true, skips the internal verification.  However, if the `verifyCallback` property is set, the callback will be called regardless of this setting. Default is false. This property is set after initializing the `TLSService`.
     public var skipVerification: Bool = false
     
     // MARK: --- Read Only
     
-    /// SSL Configuration (Read only)
+    /// TLS Configuration (Read only)
     public private(set) var configuration: Configuration
     
     /// True if setup as server, false if setup as client.
     public private(set) var isServer: Bool = true
     
     /// Read/write dispatcher to serialize these operations...
-    public private(set) var rwDispatch = SSLReadWriteDispatcher()
+    public private(set) var rwDispatch = TLSReadWriteDispatcher()
     
     #if os(Linux)
     
-    /// SSL Connection
-    public private(set) var cSSL: UnsafeMutablePointer<SSL>? = nil
+    /// TLS Connection
+    public private(set) var cTLS: UnsafeMutablePointer<SSL>? = nil
     
-    /// SSL Method
+    /// TLS Method
     /// **Note:** We use `SSLv23` which causes negotiation of the highest available SSL/TLS version.
     public private(set) var method: UnsafePointer<SSL_METHOD>? = nil
     
-    /// SSL Context
+    /// TLS Context
     public private(set) var context: UnsafeMutablePointer<SSL_CTX>? = nil
     
     #else
@@ -335,7 +312,7 @@ public class SSLService: TLSServiceDelegate {
     /// Socket Pointer containing the socket fd (passed to the `SSLRead` and `SSLWrite` callback routines).
     public private(set) var socketPtr = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
     
-    /// SSL Context
+    /// TLS Context
     public private(set) var context: SSLContext?
     
     #endif
@@ -344,11 +321,11 @@ public class SSLService: TLSServiceDelegate {
     // MARK: Lifecycle
     
     ///
-    /// Initialize an `SSLService` instance.
+    /// Initialize an `TLSService` instance.
     ///
     /// - Parameter config:		Configuration to use.
     ///
-    /// - Returns: `SSLService` instance.
+    /// - Returns: `TLSService` instance.
     ///
     public init?(usingConfiguration config: Configuration) throws {
         
@@ -360,13 +337,13 @@ public class SSLService: TLSServiceDelegate {
     }
     
     ///
-    /// Clone an existing instance of `SSLService`.
+    /// Clone an existing instance of `TLSService`.
     ///
-    /// - Parameter source:		The instance of `SSLService` to clone.
+    /// - Parameter source:		The instance of `TLSService` to clone.
     ///
-    /// - Returns: New `SSLService` instance cloned from the provided instance.
+    /// - Returns: New `TLSService` instance cloned from the provided instance.
     ///
-    private init?(with source: SSLService) throws {
+    private init?(with source: TLSService) throws {
         
         self.configuration = source.configuration
         
@@ -374,67 +351,54 @@ public class SSLService: TLSServiceDelegate {
         try self.validate(configuration: source.configuration)
         
         // Initialize as server...
-        try self.initialize(asServer: true)
+        //		try self.initialize(asServer: true)
+        try self.didServerCreate()
     }
     
     
     // MARK: TLSServiceDelegate Protocol
     
+    
     ///
-    /// Initialize `SSLService`
+    /// Initialize TLS Service for Client
     ///
-    /// - Parameter asServer:	True for initializing a server, otherwise a client.
-    ///
-    public func initialize(asServer: Bool) throws {
+    public func didClientCreate() throws {
         
-        self.isServer = asServer
+        self.isServer = false
         
-        #if os(Linux)
-            
-            // Common initialization...
-            // 	- We only do this once...
-            if !SSLService.initialized {
-                SSL_library_init()
-                SSL_load_error_strings()
-                OPENSSL_config(nil)
-                OPENSSL_add_all_algorithms_conf()
-                SSLService.initialized = true
-            }
-            
-            // Server or client specific method determination...
-            if isServer {
-                
-                self.method = SSLv23_server_method()
-                
-            } else {
-                
-                self.method = SSLv23_client_method()
-            }
-            
-        #endif
-        
-        // Prepare the context...
-        try self.prepareContext()
+        try self.initialize()
     }
     
     ///
-    /// willDestroy `SSLService`
+    /// Initialize TLS Service for Server
+    ///
+    public func didServerCreate() throws {
+        
+        self.isServer = true
+        
+        try self.initialize()
+    }
+    
+    
+    
+    ///
+    /// willDestroy `TLSService`
     ///
     public func willDestroy() {
         
         #if os(Linux)
             
-            // Shutdown and then free SSL pointer...
-            if self.cSSL != nil {
+            // Shutdown and then free TLS pointer...
+            if self.cTLS != nil {
                 
                 // This should avoid receiving the SIGPIPE when shutting down a session...
-                let rc = SSL_get_shutdown(self.cSSL!)
+                let rc = SSL_get_shutdown(self.cTLS!)
                 if rc >= 0 {
-                    SSL_shutdown(self.cSSL!)
+                    SSL_shutdown(self.cTLS!)
                 }
                 
                 // Finish cleaning up...
-                SSL_free(self.cSSL!)
+                SSL_free(self.cTLS!)
             }
             
             // Now the context...
@@ -469,7 +433,7 @@ public class SSLService: TLSServiceDelegate {
         // If the new socket doesn't have a delegate, create one using self...
         if socket.TLSdelegate == nil {
             
-            let delegate = try SSLService(with: self)
+            let delegate = try TLSService(with: self)
             socket.TLSdelegate = delegate
             try socket.TLSdelegate?.didAccept(connection: socket)
             
@@ -478,13 +442,13 @@ public class SSLService: TLSServiceDelegate {
             #if os(Linux)
                 
                 // Prepare the connection...
-                let sslConnect = try prepareConnection(socket: socket)
+                let TLSConnect = try prepareConnection(socket: socket)
                 
                 // Start the handshake...
-                let rc = SSL_accept(sslConnect)
+                let rc = SSL_accept(TLSConnect)
                 if rc <= 0 {
                     
-                    try self.throwLastError(source: "SSL_accept", err: SSL_get_error(sslConnect, rc))
+                    try self.throwLastError(source: "TLS_accept", err: SSL_get_error(TLSConnect, rc))
                 }
                 
             #else
@@ -508,13 +472,13 @@ public class SSLService: TLSServiceDelegate {
         #if os(Linux)
             
             // Prepare the connection...
-            let sslConnect = try prepareConnection(socket: socket)
+            let TLSConnect = try prepareConnection(socket: socket)
             
             // Start the handshake...
-            let rc = SSL_connect(sslConnect)
+            let rc = SSL_connect(TLSConnect)
             if rc <= 0 {
                 
-                try self.throwLastError(source: "SSL_connect", err: SSL_get_error(sslConnect, rc))
+                try self.throwLastError(source: "TLS_connect", err: SSL_get_error(TLSConnect, rc))
             }
             
         #else
@@ -535,7 +499,7 @@ public class SSLService: TLSServiceDelegate {
     ///		- buffer:		Buffer pointer.
     ///		- bufSize:		Size of the buffer.
     ///
-    ///	- Returns the number of bytes written. Zero indicates SSL shutdown, less than zero indicates error.
+    ///	- Returns the number of bytes written. Zero indicates TLS shutdown, less than zero indicates error.
     ///
     public func willSend(buffer: UnsafeRawPointer, bufSize: Int) throws -> Int {
         
@@ -543,19 +507,19 @@ public class SSLService: TLSServiceDelegate {
             
             let processed = try self.rwDispatch.sync(execute: { [unowned self] () -> Int in
                 
-                guard let sslConnect = self.cSSL else {
+                guard let TLSConnect = self.cTLS else {
                     
                     let reason = "ERROR: SSL_write, code: \(ECONNABORTED), reason: Unable to reference connection)"
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
-                let rc = SSL_write(sslConnect, buffer, Int32(bufSize))
+                let rc = SSL_write(TLSConnect, buffer, Int32(bufSize))
                 if rc < 0 {
                     
-                    let lastError = SSL_get_error(sslConnect, rc)
+                    let lastError = SSL_get_error(TLSConnect, rc)
                     if lastError == SSL_ERROR_WANT_READ || lastError == SSL_ERROR_WANT_WRITE {
                         
-                        throw SSLError.retryNeeded
+                        throw TLSError.retryNeeded
                     }
                     
                     try self.throwLastError(source: "SSL_write", err: lastError)
@@ -570,21 +534,21 @@ public class SSLService: TLSServiceDelegate {
             
             let processed = try self.rwDispatch.sync(execute: { [unowned self] () -> Int in
                 
-                guard let sslContext = self.context else {
+                guard let TLSContext = self.context else {
                     
                     let reason = "ERROR: SSL_write, code: \(ECONNABORTED), reason: Unable to reference connection)"
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
                 var processed = 0
-                let status: OSStatus = SSLWrite(sslContext, buffer, bufSize, &processed)
+                let status: OSStatus = SSLWrite(TLSContext, buffer, bufSize, &processed)
                 if status == errSSLWouldBlock {
                     
-                    throw SSLError.retryNeeded
+                    throw TLSError.retryNeeded
                     
                 } else if status != errSecSuccess {
                     
-                    try self.throwLastError(source: "SSLWrite", err: status)
+                    try self.throwLastError(source: "TLSWrite", err: status)
                 }
                 return processed
             })
@@ -601,7 +565,7 @@ public class SSLService: TLSServiceDelegate {
     ///		- buffer:		Buffer pointer.
     ///		- bufSize:		Size of the buffer.
     ///
-    ///	- Returns: the number of bytes read. Zero indicates SSL shutdown or in the case of a non-blocking socket, no data available for reading, less than zero indicates error.
+    ///	- Returns: the number of bytes read. Zero indicates TLS shutdown or in the case of a non-blocking socket, no data available for reading, less than zero indicates error.
     ///
     public func willReceive(buffer: UnsafeMutableRawPointer, bufSize: Int) throws -> Int {
         
@@ -609,16 +573,16 @@ public class SSLService: TLSServiceDelegate {
             
             let processed = try self.rwDispatch.sync(execute: { [unowned self] () -> Int in
                 
-                guard let sslConnect = self.cSSL else {
+                guard let TLSConnect = self.cTLS else {
                     
                     let reason = "ERROR: SSL_read, code: \(ECONNABORTED), reason: Unable to reference connection)"
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
-                let rc = SSL_read(sslConnect, buffer, Int32(bufSize))
+                let rc = SSL_read(TLSConnect, buffer, Int32(bufSize))
                 if rc < 0 {
                     
-                    let lastError = SSL_get_error(sslConnect, rc)
+                    let lastError = SSL_get_error(TLSConnect, rc)
                     if lastError == SSL_ERROR_WANT_READ || lastError == SSL_ERROR_WANT_WRITE {
                         
                         errno = EAGAIN
@@ -637,14 +601,14 @@ public class SSLService: TLSServiceDelegate {
             
             let processed = try self.rwDispatch.sync(execute: { [unowned self] () -> Int in
                 
-                guard let sslContext = self.context else {
+                guard let TLSContext = self.context else {
                     
                     let reason = "ERROR: SSLRead, code: \(ECONNABORTED), reason: Unable to reference connection)"
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
                 var processed = 0
-                let status: OSStatus = SSLRead(sslContext, buffer, bufSize, &processed)
+                let status: OSStatus = SSLRead(TLSContext, buffer, bufSize, &processed)
                 if status != errSecSuccess && status != errSSLWouldBlock && status != errSSLClosedGraceful {
                     
                     try self.throwLastError(source: "SSLRead", err: status)
@@ -668,6 +632,42 @@ public class SSLService: TLSServiceDelegate {
     // MARK: Private Methods
     
     ///
+    /// Initialize `TLSService`
+    ///
+    /// - Parameter asServer:	True for initializing a server, otherwise a client.
+    ///
+    private func initialize() throws {
+        
+        #if os(Linux)
+            
+            // Common initialization...
+            // 	- We only do this once...
+            if !TLSService.initialized {
+                SSL_library_init()
+                SSL_load_error_strings()
+                OPENSSL_config(nil)
+                OPENSSL_add_all_algorithms_conf()
+                TLSService.initialized = true
+            }
+            
+            // Server or client specific method determination...
+            if isServer {
+                
+                self.method = SSLv23_server_method()
+                
+            } else {
+                
+                self.method = SSLv23_client_method()
+            }
+            
+        #endif
+        
+        // Prepare the context...
+        try self.prepareContext()
+    }
+    
+    
+    ///
     /// Validate configuration
     ///
     /// - Parameter configuration:	Configuration to validate.
@@ -683,11 +683,11 @@ public class SSLService: TLSServiceDelegate {
         if let certString = configuration.certificateString {
             
             // Make sure that string in a valid format...
-            guard certString.hasPrefix(SSLService.PEM_BEGIN_MARKER) &&
-                certString.hasSuffix(SSLService.PEM_END_MARKER) &&
+            guard certString.hasPrefix(TLSService.PEM_BEGIN_MARKER) &&
+                certString.hasSuffix(TLSService.PEM_END_MARKER) &&
                 certString.utf8.count > 0 else {
                     
-                    throw SSLError.fail(Int(ENOENT), "PEM Certificate String is not valid.")
+                    throw TLSError.fail(Int(ENOENT), "PEM Certificate String is not valid.")
             }
             return
         }
@@ -699,7 +699,7 @@ public class SSLService: TLSServiceDelegate {
                 
                 if configuration.certificateFilePath == nil || configuration.keyFilePath == nil {
                     
-                    throw SSLError.fail(Int(ENOENT), "Certificate and/or key file not specified.")
+                    throw TLSError.fail(Int(ENOENT), "Certificate and/or key file not specified.")
                 }
                 
             } else {
@@ -710,13 +710,13 @@ public class SSLService: TLSServiceDelegate {
                     // Need a CA certificate (file or directory)...
                     if configuration.caCertificateFilePath == nil && configuration.caCertificateDirPath == nil {
                         
-                        throw SSLError.fail(Int(ENOENT), "CA Certificate not specified.")
+                        throw TLSError.fail(Int(ENOENT), "CA Certificate not specified.")
                     }
                     
                     // Also need a certificate file and key file...
                     if configuration.certificateFilePath == nil || configuration.keyFilePath == nil {
                         
-                        throw SSLError.fail(Int(ENOENT), "Certificate and/or key file not specified.")
+                        throw TLSError.fail(Int(ENOENT), "Certificate and/or key file not specified.")
                     }
                 }
             }
@@ -727,7 +727,7 @@ public class SSLService: TLSServiceDelegate {
             //	- Note: This is regardless of whether it's self-signed or not.
             if configuration.certificateChainFilePath == nil {
                 
-                throw SSLError.fail(Int(ENOENT), "PKCS12 file not specified.")
+                throw TLSError.fail(Int(ENOENT), "PKCS12 file not specified.")
             }
             
         #endif
@@ -739,7 +739,7 @@ public class SSLService: TLSServiceDelegate {
             
             if !FileManager.default.fileExists(atPath: caFile) {
                 
-                throw SSLError.fail(Int(ENOENT), "CA Certificate doesn't exist in current directory.")
+                throw TLSError.fail(Int(ENOENT), "CA Certificate doesn't exist in current directory.")
             }
         }
         
@@ -748,17 +748,17 @@ public class SSLService: TLSServiceDelegate {
             var isDir: ObjCBool = false
             if !FileManager.default.fileExists(atPath: caPath, isDirectory: &isDir) {
                 
-                throw SSLError.fail(Int(ENOENT), "CA Certificate directory path doesn't exist.")
+                throw TLSError.fail(Int(ENOENT), "CA Certificate directory path doesn't exist.")
             }
             #if os(Linux)
                 if !isDir {
                     
-                    throw SSLError.fail(Int(ENOENT), "CA Certificate directory path doesn't specify a directory.")
+                    throw TLSError.fail(Int(ENOENT), "CA Certificate directory path doesn't specify a directory.")
                 }
             #else
                 if !isDir.boolValue {
                     
-                    throw SSLError.fail(Int(ENOENT), "CA Certificate directory path doesn't specify a directory.")
+                    throw TLSError.fail(Int(ENOENT), "CA Certificate directory path doesn't specify a directory.")
                 }
             #endif
         }
@@ -768,7 +768,7 @@ public class SSLService: TLSServiceDelegate {
             
             if !FileManager.default.fileExists(atPath: certFilePath) {
                 
-                throw SSLError.fail(Int(ENOENT), "Certificate doesn't exist at specified path.")
+                throw TLSError.fail(Int(ENOENT), "Certificate doesn't exist at specified path.")
             }
         }
         
@@ -777,7 +777,7 @@ public class SSLService: TLSServiceDelegate {
             
             if !FileManager.default.fileExists(atPath: keyFilePath) {
                 
-                throw SSLError.fail(Int(ENOENT), "Key file doesn't exist at specified path.")
+                throw TLSError.fail(Int(ENOENT), "Key file doesn't exist at specified path.")
             }
         }
         
@@ -786,7 +786,7 @@ public class SSLService: TLSServiceDelegate {
             
             if !FileManager.default.fileExists(atPath: chainPath) {
                 
-                throw SSLError.fail(Int(ENOENT), "Certificate chain doesn't exist at specified path.")
+                throw TLSError.fail(Int(ENOENT), "Certificate chain doesn't exist at specified path.")
             }
         }
     }
@@ -801,8 +801,8 @@ public class SSLService: TLSServiceDelegate {
             // Make sure we've got the method to use...
             guard let method = self.method else {
                 
-                let reason = "ERROR: Unable to reference SSL method."
-                throw SSLError.fail(Int(ENOMEM), reason)
+                let reason = "ERROR: Unable to reference TLS method."
+                throw TLSError.fail(Int(ENOMEM), reason)
             }
             
             // Now we can create the context...
@@ -810,7 +810,7 @@ public class SSLService: TLSServiceDelegate {
             
             guard let context = self.context else {
                 
-                let reason = "ERROR: Unable to create SSL context."
+                let reason = "ERROR: Unable to create TLS context."
                 try self.throwLastError(source: reason)
                 return
             }
@@ -826,7 +826,7 @@ public class SSLService: TLSServiceDelegate {
             if self.configuration.certsAreSelfSigned {
                 SSL_CTX_set_verify(context, SSL_VERIFY_NONE, nil)
             }
-            SSL_CTX_set_verify_depth(context, SSLService.DEFAULT_VERIFY_DEPTH)
+            SSL_CTX_set_verify_depth(context, TLSService.DEFAULT_VERIFY_DEPTH)
             
             #if USE_AUTO_ECDH
                 //	- Auto ECDH handling...  Note: requires OpenSSL 1.0.2 or greater.
@@ -920,15 +920,15 @@ public class SSLService: TLSServiceDelegate {
             // So, first create the context...
             let protocolSide: SSLProtocolSide = self.isServer ? .serverSide : .clientSide
             self.context = SSLCreateContext(kCFAllocatorDefault, protocolSide, SSLConnectionType.streamType)
-            guard let sslContext = self.context else {
+            guard let TLSContext = self.context else {
                 
-                let reason = "ERROR: Unable to create SSL context."
-                throw SSLError.fail(Int(ENOMEM), reason)
+                let reason = "ERROR: Unable to create TLS context."
+                throw TLSError.fail(Int(ENOMEM), reason)
             }
             
             // Now prepare it...
             //	- Setup our read and write callbacks...
-            SSLSetIOFuncs(sslContext, sslReadCallback, sslWriteCallback)
+            SSLSetIOFuncs(TLSContext, sslReadCallback, sslWriteCallback)
             
             //  - Process the PKCS12 file (if any)...
             var status: OSStatus
@@ -941,21 +941,21 @@ public class SSLService: TLSServiceDelegate {
                     guard let certFile = configuration.certificateChainFilePath else {
                         
                         let reason = "ERROR: No PKCS12 file"
-                        throw SSLError.fail(Int(ENOENT), reason)
+                        throw TLSError.fail(Int(ENOENT), reason)
                     }
                     
                     // 	- Now load them...
                     guard let p12Data = NSData(contentsOfFile: certFile) else {
                         
                         let reason = "ERROR: Error reading PKCS12 file"
-                        throw SSLError.fail(Int(ENOENT), reason)
+                        throw TLSError.fail(Int(ENOENT), reason)
                     }
                     
                     // 	- Create key dictionary for reading p12 file...
                     guard let passwd: String = self.configuration.password else {
                         
                         let reason = "ERROR: No password for PKCS12 file"
-                        throw SSLError.fail(Int(ENOENT), reason)
+                        throw TLSError.fail(Int(ENOENT), reason)
                     }
                     let key: NSString = kSecImportExportPassphrase as NSString
                     let options: NSDictionary = [key: passwd as AnyObject]
@@ -979,7 +979,7 @@ public class SSLService: TLSServiceDelegate {
                     guard let secIdentity = secIdentityRef else {
                         
                         let reason = "ERROR: Can't extract identity."
-                        throw SSLError.fail(Int(ENOENT), reason)
+                        throw TLSError.fail(Int(ENOENT), reason)
                     }
                     
                     //	-- Cert chain...
@@ -994,7 +994,7 @@ public class SSLService: TLSServiceDelegate {
                     self.configuration.pkcs12Certs = certs as CFArray
                 }
                 
-                status = SSLSetCertificate(sslContext, self.configuration.pkcs12Certs)
+                status = SSLSetCertificate(TLSContext, self.configuration.pkcs12Certs)
                 if status != errSecSuccess {
                     
                     try self.throwLastError(source: "SSLSetCertificate", err: status)
@@ -1017,7 +1017,7 @@ public class SSLService: TLSServiceDelegate {
             }
             
             //	- Enable the desired ciphers...
-            status = SSLSetEnabledCiphers(sslContext, eCipherSuites, cipherlist.count)
+            status = SSLSetEnabledCiphers(TLSContext, eCipherSuites, cipherlist.count)
             if status != errSecSuccess {
                 
                 try self.throwLastError(source: "SSLSetConnection", err: status)
@@ -1033,31 +1033,30 @@ public class SSLService: TLSServiceDelegate {
     ///
     /// - Parameter socket:	The connected `Socket` instance.
     ///
-    /// - Returns: `UnsafeMutablePointer` to the SSL connection.
+    /// - Returns: `UnsafeMutablePointer` to the TLS connection.
     ///
-    //	private func prepareConnection(socket: Socket) throws -> UnsafeMutablePointer<SSL> {
     private func prepareConnection(socket: ConnectionDelegate) throws -> UnsafeMutablePointer<SSL> {
     
     // Make sure our context is valid...
     guard let context = self.context else {
     
     let reason = "ERROR: Unable to access SSL context."
-    throw SSLError.fail(Int(EFAULT), reason)
+    throw TLSError.fail(Int(EFAULT), reason)
     }
     
     // Now create the connection...
-    self.cSSL = SSL_new(context)
+    self.cTLS = SSL_new(context)
     
-    guard let sslConnect = self.cSSL else {
+    guard let TLSConnect = self.cTLS else {
     
-    let reason = "ERROR: Unable to create SSL connection."
-    throw SSLError.fail(Int(EFAULT), reason)
+    let reason = "ERROR: Unable to create TLS connection."
+    throw TLSError.fail(Int(EFAULT), reason)
     }
     
     // Set the socket file descriptor...
-    SSL_set_fd(sslConnect, socket.socketfd)
+    SSL_set_fd(TLSConnect, socket.socketfd)
     
-    return sslConnect
+    return TLSConnect
     }
     
     #else
@@ -1071,10 +1070,10 @@ public class SSLService: TLSServiceDelegate {
     private func prepareConnection(socket: ConnectionDelegate) throws {
         
         // Make sure we've got a context...
-        guard let sslContext = self.context else {
+        guard let TLSContext = self.context else {
             
-            let reason = "ERROR: Unable to access SSL context."
-            throw SSLError.fail(Int(EFAULT), reason)
+            let reason = "ERROR: Unable to access TLS context."
+            throw TLSError.fail(Int(EFAULT), reason)
         }
         
         // Set the socket file descriptor as our connection data...
@@ -1084,10 +1083,10 @@ public class SSLService: TLSServiceDelegate {
             self.socketPtr.pointee = fd
         default:
             let reason = "ERROR: This is a socket implementation."
-            throw SSLError.fail(Int(EPERM), reason)
+            throw TLSError.fail(Int(EPERM), reason)
         }
         
-        var status: OSStatus = SSLSetConnection(sslContext, self.socketPtr)
+        var status: OSStatus = SSLSetConnection(TLSContext, self.socketPtr)
         if status != errSecSuccess {
             
             try self.throwLastError(source: "SSLSetConnection", err: status)
@@ -1095,14 +1094,14 @@ public class SSLService: TLSServiceDelegate {
         
         // Allow self signed certificates from server
         if isServer == false && configuration.clientAllowsSelfSignedCertificates == true {
-            SSLSetSessionOption(sslContext, .breakOnServerAuth, true)
+            SSLSetSessionOption(TLSContext, .breakOnServerAuth, true)
         }
         
         
         // Start and repeat the handshake process until it either completes or fails...
         repeat {
             
-            status = SSLHandshake(sslContext)
+            status = SSLHandshake(TLSContext)
             print("SSLHandshake = \(status) \n")
             
         } while status == errSSLWouldBlock
@@ -1122,8 +1121,6 @@ public class SSLService: TLSServiceDelegate {
     ///
     private func verifyConnection() throws {
         
-        print("verifyConnection1")
-        
         // Only do verification if the skip verification flag is off and...
         // 	we have backing certificates...
         if self.skipVerification == false && self.configuration.noBackingCertificates == false {
@@ -1136,15 +1133,15 @@ public class SSLService: TLSServiceDelegate {
             #if os(Linux)
                 
                 // Standard Linux verification...
-                guard let sslConnect = self.cSSL else {
+                guard let TLSConnect = self.cTLS else {
                     
                     let reason = "ERROR: verifyConnection, code: \(ECONNABORTED), reason: Unable to reference connection)"
                     throw SSLError.fail(Int(ECONNABORTED), reason)
                 }
                 
-                if SSL_get_peer_certificate(sslConnect) != nil {
+                if SSL_get_peer_certificate(TLSConnect) != nil {
                     
-                    let rc = SSL_get_verify_result(sslConnect)
+                    let rc = SSL_get_verify_result(TLSConnect)
                     switch rc {
                         
                     case Int(X509_V_OK):
@@ -1161,7 +1158,7 @@ public class SSLService: TLSServiceDelegate {
                     
                     // If we're here, we've got an error...
                     let reason = "ERROR: verifyConnection, code: \(rc), reason: Unable to verify presented peer certificate."
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                     
                 }
                 
@@ -1170,7 +1167,7 @@ public class SSLService: TLSServiceDelegate {
                 if !self.isServer {
                     
                     let reason = "ERROR: verifyConnection, code: \(ECONNABORTED), reason: Peer certificate was not presented."
-                    throw SSLError.fail(Int(ECONNABORTED), reason)
+                    throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
             #else
@@ -1194,7 +1191,7 @@ public class SSLService: TLSServiceDelegate {
             }
             
             let reason = failReason ?? "Unknown verification failure"
-            throw SSLError.fail(Int(EFAULT), "ERROR: " + reason)
+            throw TLSError.fail(Int(EFAULT), "ERROR: " + reason)
         }
     }
     
@@ -1246,14 +1243,14 @@ public class SSLService: TLSServiceDelegate {
         #endif
         
         let reason = "ERROR: \(source), code: \(errorCode), reason: \(errorString)"
-        throw SSLError.fail(Int(errorCode), reason)
+        throw TLSError.fail(Int(errorCode), reason)
     }
 }
 
 #if !os(Linux)
     
     ///
-    /// SSL Read Callback
+    /// TLS Read Callback
     ///
     /// - Parameters:
     ///		- connection:	The connection to read from (contains pointer to active Socket object).
@@ -1310,7 +1307,7 @@ public class SSLService: TLSServiceDelegate {
     }
     
     ///
-    /// SSL Write Callback
+    /// TLS Write Callback
     ///
     /// - Parameters:
     ///		- connection:	The connection to write to (contains pointer to active Socket object).

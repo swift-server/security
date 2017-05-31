@@ -14,11 +14,14 @@ import Foundation
 public protocol TLSServiceDelegate {
     
     ///
-    /// Initialize TLS Service
+    /// Initialize TLS Service for Client
     ///
-    /// - Parameter asServer:	True for initializing a server, otherwise a client.
+    func didClientCreate() throws
+    
     ///
-    func initialize(asServer: Bool) throws
+    /// Initialize TLS Service for Server
+    ///
+    func didServerCreate() throws
     
     ///
     /// willDestroy TLS Service
@@ -66,9 +69,9 @@ public protocol TLSServiceDelegate {
 // MARK: SSLError
 
 ///
-/// SSL Service Error
+/// TLS Service Error
 ///
-public enum SSLError: Swift.Error, CustomStringConvertible {
+public enum TLSError: Swift.Error, CustomStringConvertible {
     
     /// Success
     case success
