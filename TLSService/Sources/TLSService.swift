@@ -70,7 +70,7 @@ public class TLSService: TLSServiceDelegate {
     // MARK: Helpers
     
     ///
-    /// Used to dispatch reads and writes to protect the TLSContext
+    /// Used to dispatch reads and writes to protect the tlsContext
     ///
     public struct TLSReadWriteDispatcher {
         
@@ -534,14 +534,14 @@ public class TLSService: TLSServiceDelegate {
             
             let processed = try self.rwDispatch.sync(execute: { [unowned self] () -> Int in
                 
-                guard let TLSContext = self.context else {
+                guard let tlsContext = self.context else {
                     
                     let reason = "ERROR: SSL_write, code: \(ECONNABORTED), reason: Unable to reference connection)"
                     throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
                 var processed = 0
-                let status: OSStatus = SSLWrite(TLSContext, buffer, bufSize, &processed)
+                let status: OSStatus = SSLWrite(tlsContext, buffer, bufSize, &processed)
                 if status == errSSLWouldBlock {
                     
                     throw TLSError.retryNeeded
@@ -601,14 +601,14 @@ public class TLSService: TLSServiceDelegate {
             
             let processed = try self.rwDispatch.sync(execute: { [unowned self] () -> Int in
                 
-                guard let TLSContext = self.context else {
+                guard let tlsContext = self.context else {
                     
                     let reason = "ERROR: SSLRead, code: \(ECONNABORTED), reason: Unable to reference connection)"
                     throw TLSError.fail(Int(ECONNABORTED), reason)
                 }
                 
                 var processed = 0
-                let status: OSStatus = SSLRead(TLSContext, buffer, bufSize, &processed)
+                let status: OSStatus = SSLRead(tlsContext, buffer, bufSize, &processed)
                 if status != errSecSuccess && status != errSSLWouldBlock && status != errSSLClosedGraceful {
                     
                     try self.throwLastError(source: "SSLRead", err: status)
@@ -920,7 +920,7 @@ public class TLSService: TLSServiceDelegate {
             // So, first create the context...
             let protocolSide: SSLProtocolSide = self.isServer ? .serverSide : .clientSide
             self.context = SSLCreateContext(kCFAllocatorDefault, protocolSide, SSLConnectionType.streamType)
-            guard let TLSContext = self.context else {
+            guard let tlsContext = self.context else {
                 
                 let reason = "ERROR: Unable to create TLS context."
                 throw TLSError.fail(Int(ENOMEM), reason)
@@ -928,7 +928,7 @@ public class TLSService: TLSServiceDelegate {
             
             // Now prepare it...
             //	- Setup our read and write callbacks...
-            SSLSetIOFuncs(TLSContext, sslReadCallback, sslWriteCallback)
+            SSLSetIOFuncs(tlsContext, sslReadCallback, sslWriteCallback)
             
             //  - Process the PKCS12 file (if any)...
             var status: OSStatus
@@ -994,7 +994,7 @@ public class TLSService: TLSServiceDelegate {
                     self.configuration.pkcs12Certs = certs as CFArray
                 }
                 
-                status = SSLSetCertificate(TLSContext, self.configuration.pkcs12Certs)
+                status = SSLSetCertificate(tlsContext, self.configuration.pkcs12Certs)
                 if status != errSecSuccess {
                     
                     try self.throwLastError(source: "SSLSetCertificate", err: status)
@@ -1017,7 +1017,7 @@ public class TLSService: TLSServiceDelegate {
             }
             
             //	- Enable the desired ciphers...
-            status = SSLSetEnabledCiphers(TLSContext, eCipherSuites, cipherlist.count)
+            status = SSLSetEnabledCiphers(tlsContext, eCipherSuites, cipherlist.count)
             if status != errSecSuccess {
                 
                 try self.throwLastError(source: "SSLSetConnection", err: status)
@@ -1040,7 +1040,7 @@ public class TLSService: TLSServiceDelegate {
     // Make sure our context is valid...
     guard let context = self.context else {
     
-    let reason = "ERROR: Unable to access SSL context."
+    let reason = "ERROR: Unable to access TLS context."
     throw TLSError.fail(Int(EFAULT), reason)
     }
     
@@ -1066,27 +1066,25 @@ public class TLSService: TLSServiceDelegate {
     ///
     /// - Parameter socket:	The connected `Socket` instance.
     ///
-    //	private func prepareConnection(socket: Socket) throws {
     private func prepareConnection(socket: ConnectionDelegate) throws {
         
         // Make sure we've got a context...
-        guard let TLSContext = self.context else {
+        guard let tlsContext = self.context else {
             
             let reason = "ERROR: Unable to access TLS context."
             throw TLSError.fail(Int(EFAULT), reason)
         }
         
         // Set the socket file descriptor as our connection data...
-        //		self.socketPtr.pointee = socket.fileDescriptor
         switch socket.endpoint {
-        case .socket(let fd):
-            self.socketPtr.pointee = fd
-        default:
-            let reason = "ERROR: This is a socket implementation."
-            throw TLSError.fail(Int(EPERM), reason)
+            case .socket(let fd):
+                self.socketPtr.pointee = fd
+            default:
+                let reason = "ERROR: This is a socket implementation."
+                throw TLSError.fail(Int(EPERM), reason)
         }
         
-        var status: OSStatus = SSLSetConnection(TLSContext, self.socketPtr)
+        var status: OSStatus = SSLSetConnection(tlsContext, self.socketPtr)
         if status != errSecSuccess {
             
             try self.throwLastError(source: "SSLSetConnection", err: status)
@@ -1094,14 +1092,14 @@ public class TLSService: TLSServiceDelegate {
         
         // Allow self signed certificates from server
         if isServer == false && configuration.clientAllowsSelfSignedCertificates == true {
-            SSLSetSessionOption(TLSContext, .breakOnServerAuth, true)
+            SSLSetSessionOption(tlsContext, .breakOnServerAuth, true)
         }
         
         
         // Start and repeat the handshake process until it either completes or fails...
         repeat {
             
-            status = SSLHandshake(TLSContext)
+            status = SSLHandshake(tlsContext)
             print("SSLHandshake = \(status) \n")
             
         } while status == errSSLWouldBlock
