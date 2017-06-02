@@ -14,11 +14,11 @@ public protocol ConnectionDelegate:class {
     ///
     /// Connection endpoint (such as socket file descriptor)
     ///
-    var endpoint: ConnectionType { get set }
+    var endpoint: ConnectionType { get }
     
     ///
     /// The delegate that provides the TLS Service implementation.
-    /// Delegate can be nil which indicates an unsecure communication channel.
+    /// Delegate can be nil which indicates an insecure communication channel.
     ///
     var TLSdelegate: TLSServiceDelegate? { get set }
 }
@@ -29,6 +29,17 @@ public protocol ConnectionDelegate:class {
 ///
 /// Connection Type
 ///
-public enum ConnectionType {
+public enum ConnectionType: Equatable {
     case socket(Int32)
+    case unknown
+    
+}
+
+public func ==(lhs: ConnectionType, rhs: ConnectionType) -> Bool {
+    switch (lhs, rhs) {
+    case let (.socket(a), .socket(b)):
+        return a == b
+    default:
+        return false
+    }
 }
