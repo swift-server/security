@@ -11,11 +11,24 @@
 ///
 public protocol ConnectionDelegate:class {
     
+    ///
+    /// Connection endpoint (such as socket file descriptor)
+    ///
     var endpoint: ConnectionType { get set }
-    var TLSdelegate: TLSServiceDelegate? { get set}
+    
+    ///
+    /// The delegate that provides the TLS Service implementation.
+    /// Delegate can be nil which indicates an unsecure communication channel.
+    ///
+    var TLSdelegate: TLSServiceDelegate? { get set }
 }
 
 
+// MARK: ConnectionType
+
+///
+/// Connection Type
+///
 public enum ConnectionType {
     case socket(Int32)
 }
