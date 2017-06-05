@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "security",
-    targets:  [Target(name: "security")],
+    name: "ServerSecurity",
+    targets:  [Target(name: "ServerSecurity")],
     dependencies: [],
     exclude: [])
