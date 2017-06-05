@@ -7,10 +7,3 @@ let package = Package(
     targets:  [Target(name: "TLSService")],
     dependencies: [],
     exclude: ["Protocols"])
-
-#if os(Linux)
-// module map for OpenSSL libSSL and libcrypto
-package.dependencies.append(
-    .Package(url: "https://github.com/IBM-Swift/OpenSSL.git", majorVersion: 0, minor: 3))
-    
-#endif
