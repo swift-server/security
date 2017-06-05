@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "TLSService",
-    targets:  [Target(name: "TLSService")],
+    name: "security",
+    targets:  [Target(name: "security")],
     dependencies: [],
-    exclude: ["Protocols"])
+    exclude: [])
