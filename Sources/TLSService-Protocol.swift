@@ -40,7 +40,7 @@ public protocol TLSServiceDelegate {
     ///
     /// - Parameter connection:	The connected ConnectionDelegate instance.
     ///
-    func didConnect(connection: ConnectionDelegate) throws
+    func didConnect(to connection: ConnectionDelegate) throws
     
     ///
     /// Low level writer
@@ -54,6 +54,15 @@ public protocol TLSServiceDelegate {
     func willSend(buffer: UnsafeRawPointer, bufSize: Int) throws -> Int
     
     ///
+    /// Low level writer
+    ///
+    /// - Parameters: data:		Buffer pointer.
+    ///
+    ///	- Returns the number of bytes written. Zero indicates TLS shutdown, less than zero indicates error.
+    ///
+    func willSend(data: Data) throws -> Int
+    
+    ///
     /// Low level reader
     ///
     /// - Parameters:
@@ -62,55 +71,15 @@ public protocol TLSServiceDelegate {
     ///
     ///	- Returns the number of bytes read. Zero indicates TLS shutdown, less than zero indicates error.
     ///
-    func willReceive(buffer: UnsafeMutableRawPointer, bufSize: Int) throws -> Int
-    
-}
+    func willReceive(into buffer: UnsafeMutableRawPointer, bufSize: Int) throws -> Int
 
-// MARK: TLSError
+    ///
+    /// Low level reader
+    ///
+    /// - Parameters: data: The buffer to return the data in.
+    ///
+    ///	- Returns the number of bytes read. Zero indicates TLS shutdown, less than zero indicates error.
+    ///
+    func willReceive(into data: inout Data) throws -> Int
 
-///
-/// TLS Service Error
-///
-public enum TLSError: Swift.Error, CustomStringConvertible {
-    
-    /// Success
-    case success
-    
-    /// Retry needed
-    case retryNeeded
-    
-    /// Failure with error code and reason
-    case fail(Int, String)
-    
-    /// The error code itself
-    public var code: Int {
-        
-        switch self {
-            
-        case .success:
-            return 0
-            
-        case .retryNeeded:
-            return -1
-            
-        case .fail(let (code, _)):
-            return Int(code)
-        }
-    }
-    
-    /// Error description
-    public var description: String {
-        
-        switch self {
-            
-        case .success:
-            return "Success"
-            
-        case .retryNeeded:
-            return "Retry operation"
-            
-        case .fail(let (_, reason)):
-            return reason
-        }
-    }
 }

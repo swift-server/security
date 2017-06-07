@@ -6,6 +6,8 @@
 // See http://swift.org/LICENSE.txt for license information
 //
 
+// MARK: Connection Delegate
+
 ///
 /// Connection Delegate Protocol
 ///
