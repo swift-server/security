@@ -16,12 +16,12 @@ public protocol TLSServiceDelegate {
     ///
     /// Initialize TLS Service for Client
     ///
-    func didClientCreate() throws
+    func didCreateClient() throws
     
     ///
     /// Initialize TLS Service for Server
     ///
-    func didServerCreate() throws
+    func didCreateServer() throws
     
     ///
     /// willDestroy TLS Service
