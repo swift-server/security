@@ -8,7 +8,11 @@
 
 import Foundation
 
+// MARK: TLSConfiguration
+
+///
 /// A structure representing the configuration of an SSL/TLS connection
+///
 public struct TLSConfiguration {
     
     // MARK: Properties
