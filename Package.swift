@@ -1,9 +1,13 @@
-// swift-tools-version:3.1
+// swift-tools-version:4.0
 
 import PackageDescription
 
 let package = Package(
     name: "ServerSecurity",
-    targets:  [Target(name: "ServerSecurity")],
-    dependencies: [],
-    exclude: [])
+    products: [
+        .library( name: "ServerSecurity",
+                  targets: ["ServerSecurity"])
+    ],
+    
+    targets: [ .target( name: "ServerSecurity", dependencies: []) ]
+)
