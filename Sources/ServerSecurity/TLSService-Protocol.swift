@@ -63,18 +63,6 @@ public protocol TLSServiceDelegate {
     func willSend(data: Data) throws -> Int
 
     ///
-    /// Gets the amount of data in the current TLS data record that is immediately
-    /// available for reading on a TLS connection.
-    /// This API is required since the TLS layer buffers data once it reads it from the connection
-    /// (e.g., socket) and decrypts it.
-    ///
-    /// - Parameters:
-    ///
-    ///    - Returns the amount of data that TLS layer has buffered
-    ///
-    func getPendingBytes() throws -> Int
-
-    ///
     /// Low level reader
     ///
     /// - Parameters:
