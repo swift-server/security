@@ -8,6 +8,17 @@
 
 import Foundation
 
+// MARK: TLSConstants
+
+///
+/// A structure for storing TLS related constants
+///
+public struct TLSConstants {
+    
+    // Max size of TLS record in Bytes
+    public static var maxTLSRecordLength: Int = 16384
+}
+
 // MARK: TLSConfiguration
 
 ///
