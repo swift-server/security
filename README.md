@@ -1,3 +1,9 @@
+# Status
+
+:warning: This project is unmaintained experimental legacy code. It has been obsoleted by [swift-nio-ssl](https://github.com/apple/swift-nio-ssl) which contains the recommended TLS API of the [Swift Server Work Group](https://swift.org/server/).
+
+It remains here for historical interest only.
+
 # Introduction
 
 Currently there is no standard Swift security library that is compatible with all of the current Swift platforms (Apple and Linux). This lack of standardization has resulted in multiple projects which either write their own Swift security functionality or use their security library of choice (be it OpenSSL, LibreSSL, etc.).  This is not desirable because it can lead to:
